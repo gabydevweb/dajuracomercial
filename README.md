@@ -12,7 +12,7 @@ El proyecto Supabase **dajuracomercial** (`rkrzmgdsgiakqopyqpoy`) ya tiene aplic
 - Se verificaron contra Supabase real las fotos de productos, el alta y edición de artículos, precios, stock, visibilidad, privacidad de comprobantes y transición de pedidos. Todos los datos temporales se eliminaron.
 - El catálogo real y la cuenta bancaria están vacíos a propósito: configúralos desde `/admin` antes de recibir ventas.
 - Supabase conserva la confirmación de correo activada. **Falta un servicio SMTP propio** para enviar confirmaciones y recuperaciones a todos los clientes; no se ha simulado el envío de correos. El administrador inicial puede entrar y cambiar su contraseña sin depender del correo.
-- No hay sesión de Vercel disponible en este entorno. La publicación y los DNS del dominio siguen pendientes de vincular a Vercel; el dominio ya está contemplado en Supabase.
+- La publicación web sigue pendiente de importar el repositorio en Vercel, añadir las dos variables públicas y asociar el dominio. Los enlaces del dominio ya están contemplados en Supabase.
 
 El token de administración Supabase no se guarda en el proyecto ni se envía al navegador. Solo se necesita temporalmente para tareas de instalación. Las claves de servicio tampoco se guardan.
 
