@@ -8,3 +8,6 @@ test-results
 playwright-report
 *.tsbuildinfo
 .local/
+
+.env*
+!.env.example
