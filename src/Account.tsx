@@ -206,7 +206,7 @@ export function Account() {
           Guarda tus pedidos, consulta tus compras y mantente al tanto de cada
           entrega.
         </p>
-        <img src="/products/washer.svg" alt="Una mejora para tu hogar" />
+        <img src="/products/washer.webp" alt="Una mejora para tu hogar" />
         <span className="auth-story-footer">
           <ShieldCheck size={20} /> Cerca de ti, en cada paso.
         </span>

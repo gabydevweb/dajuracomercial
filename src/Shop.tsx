@@ -81,17 +81,17 @@ export function Home() {
           <div className="hero-pedestal" />
           <img
             className="hero-fridge"
-            src="/products/fridge.svg"
+            src="/products/fridge.webp"
             alt="Nevera de puertas francesas"
           />
           <img
             className="hero-washer"
-            src="/products/washer.svg"
+            src="/products/washer.webp"
             alt="Lavadora automática"
           />
           <img
             className="hero-blender"
-            src="/products/blender.svg"
+            src="/products/blender.webp"
             alt="Licuadora de cocina"
           />
           <div className="hero-float">
@@ -183,7 +183,7 @@ export function Home() {
       <section className="container editorial">
         <div className="editorial-art">
           <span className="editorial-number">DAJURA / EN CASA</span>
-          <img src="/products/stove.svg" alt="Estufa para renovar tu cocina" />
+          <img src="/products/stove.webp" alt="Estufa para renovar tu cocina" />
           <div className="editorial-caption">
             El mejor ingrediente
             <br />

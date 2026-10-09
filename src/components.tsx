@@ -224,7 +224,7 @@ export function ProductCard({ product: p }: { product: Product }) {
             : p.badge || "Dajura"}
         </span>
         <img
-          src={p.image_url || "/products/fridge.svg"}
+          src={p.image_url || "/products/fridge.webp"}
           alt={p.name}
           loading="lazy"
         />
