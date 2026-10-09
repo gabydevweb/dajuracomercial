@@ -3,7 +3,8 @@ export const money = (amount: number) =>
   new Intl.NumberFormat("es-DO", {
     style: "currency",
     currency: "DOP",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 export const whatsapp = "https://wa.me/18496284599";
 export const categories = [

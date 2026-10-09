@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /cuenta
+Disallow: /carrito
+Disallow: /checkout
+Disallow: /pedidos/
+
+Sitemap: https://dajuracomercial.com/sitemap.xml

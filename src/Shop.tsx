@@ -29,6 +29,8 @@ import { isDemo } from "./lib";
 const categoryIcons = [Refrigerator, CookingPot, Armchair, Monitor];
 export function Home() {
   const { products, loading } = useStore();
+  const featured = products.filter((p) => p.featured);
+  const homeProducts = (featured.length ? featured : products).slice(0, 4);
   return (
     <>
       <section className="hero container">
@@ -166,12 +168,9 @@ export function Home() {
           </p>
         )}
         <div className="product-grid">
-          {products
-            .filter((p) => p.featured)
-            .slice(0, 4)
-            .map((p) => (
-              <ProductCard product={p} key={p.id} />
-            ))}
+          {homeProducts.map((p) => (
+            <ProductCard product={p} key={p.id} />
+          ))}
         </div>
         {loading && <p className="loading">Cargando productos…</p>}
         {!loading && !products.length && (

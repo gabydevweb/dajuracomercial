@@ -51,7 +51,7 @@ test("búsqueda, categorías y ficha de producto", async ({ page }) => {
   await page
     .getByRole("textbox", { name: "Buscar productos" })
     .fill("lavadora");
-  await page.getByRole("textbox", { name: "Buscar productos" }).press("Enter");
+  await page.getByRole("button", { name: "Buscar", exact: true }).click();
   await expect(page.locator(".product-card")).toHaveCount(1);
   await page
     .getByRole("heading", { name: "Lavadora automática 18 kg" })

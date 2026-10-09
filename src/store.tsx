@@ -10,6 +10,7 @@ import type { User } from "@supabase/supabase-js";
 import type { CartItem, Product, Profile, Settings } from "./types";
 import { supabase, errorMessage } from "./lib";
 import { defaultSettings, demoProducts } from "./data";
+import { fetchAll } from "./queries";
 type Store = {
   products: Product[];
   settings: Settings;
@@ -17,6 +18,7 @@ type Store = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  catalogError: string;
   authLoading: boolean;
   notice: string;
   notify: (s: string) => void;
@@ -38,6 +40,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [loading, setLoading] = useState(!!supabase),
     [authLoading, setAuthLoading] = useState(!!supabase),
     [notice, setNotice] = useState("");
+  const [catalogError, setCatalogError] = useState("");
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem("dajura-cart") || "[]");
@@ -61,22 +64,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     if (!supabase) return;
     setLoading(true);
+    setCatalogError("");
+    const client = supabase;
     try {
       const [p, s] = await Promise.all([
-        supabase
-          .from("products")
-          .select("*")
-          .eq("active", true)
-          .order("created_at"),
+        fetchAll<Product>((from, to) =>
+          client
+            .from("products")
+            .select("*")
+            .eq("active", true)
+            .order("created_at")
+            .order("id")
+            .range(from, to),
+        ),
         supabase.from("store_settings").select("*").eq("id", 1).single(),
       ]);
-      if (p.error) throw p.error;
       if (s.error) throw s.error;
-      setProducts(p.data);
+      setProducts(p);
       setSettings(s.data);
       setCart((old) =>
         old.flatMap((item) => {
-          const current = p.data.find(
+          const current = p.find(
             (product: Product) => product.id === item.product.id,
           );
           return current && current.stock > 0
@@ -90,6 +98,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }),
       );
     } catch (e) {
+      setCatalogError(
+        "No pudimos actualizar el catálogo. Comprueba tu conexión y vuelve a intentarlo.",
+      );
       notify(errorMessage(e));
     } finally {
       setLoading(false);
@@ -185,6 +196,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         user,
         profile,
         loading,
+        catalogError,
         authLoading,
         notice,
         notify,

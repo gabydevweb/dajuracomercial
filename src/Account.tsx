@@ -19,6 +19,7 @@ import { useStore } from "./store";
 import { Breadcrumb, Empty } from "./components";
 import { money, statuses, whatsapp } from "./data";
 import type { Order } from "./types";
+import { fetchAll } from "./queries";
 export function Account() {
   const { user, profile, signOut, notify, authLoading } = useStore();
   const [params] = useSearchParams(),
@@ -40,18 +41,32 @@ export function Account() {
     return () => subscription.unsubscribe();
   }, []);
   useEffect(() => {
+    setOrders([]);
     if (!supabase || !user) return;
+    let alive = true;
+    const client = supabase;
     setOrdersLoading(true);
-    supabase
-      .from("orders")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data, error }) => {
-        if (error) setError(errorMessage(error));
-        setOrders(data || []);
-        setOrdersLoading(false);
+    fetchAll<Order>((from, to) =>
+      client
+        .from("orders")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    )
+      .then((data) => {
+        if (alive) setOrders(data);
+      })
+      .catch((error) => {
+        if (alive) setError(errorMessage(error));
+      })
+      .finally(() => {
+        if (alive) setOrdersLoading(false);
       });
+    return () => {
+      alive = false;
+    };
   }, [user]);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -324,6 +339,9 @@ export function OrderDetail() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   useEffect(() => {
+    let alive = true;
+    setOrder(null);
+    setError("");
     if (!user || !supabase) {
       setLoading(false);
       return;
@@ -335,10 +353,14 @@ export function OrderDetail() {
       .eq("id", id)
       .single()
       .then(({ data, error }) => {
+        if (!alive) return;
         setOrder(data);
         if (error) setError("No pudimos cargar este pedido.");
         setLoading(false);
       });
+    return () => {
+      alive = false;
+    };
   }, [id, user]);
   async function upload(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -9,13 +9,14 @@ const response=await fetch(`https://api.supabase.com/v1/projects/${ref}/api-keys
 if(!response.ok)throw new Error(`Management HTTP ${response.status}`);
 const keys=await response.json();
 const service=createClient(`https://${ref}.supabase.co`,keys.find(k=>k.name==='service_role').api_key,{auth:{persistSession:false}});
-const access=await readFile('.local/ACCESO-ADMIN.txt','utf8');
-const email=access.match(/^Correo: (.+)$/m)[1],password=access.match(/^Contraseña inicial: (.+)$/m)[1];
+const access=process.env.DAJURA_ADMIN_PASSWORD ? '' : await readFile('.local/ACCESO-ADMIN.txt','utf8');
+const email=process.env.DAJURA_ADMIN_EMAIL || access.match(/^Correo: (.+)$/m)?.[1],password=process.env.DAJURA_ADMIN_PASSWORD || access.match(/^Contraseña inicial: (.+)$/m)?.[1];
+const baseURL=process.env.DAJURA_BASE_URL || 'http://127.0.0.1:5173';
 const sku='UI-CHECK-'+randomUUID(),name='Artículo temporal de verificación';
 const browser=await chromium.launch();let imagePath;
 const page=await browser.newPage({viewport:{width:1440,height:1000}});
 try{
- await page.goto('http://127.0.0.1:5173/cuenta');
+ await page.goto(baseURL+'/cuenta');
  await page.getByLabel('Correo electrónico').fill(email);
  await page.getByLabel('Contraseña',{exact:true}).fill(password);
  await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();
@@ -43,6 +44,19 @@ try{
  if(error)throw error;
  assert.equal(data.price,1890);assert.equal(data.stock,3);assert.equal(data.active,false);assert.ok(data.image_url.startsWith('https://'));
  console.log('PASS navegador real: iniciar sesión, abrir panel, crear artículo, subir foto, editar precio y stock, guardar en Supabase.');
+ await page.getByRole('button',{name:'Editar '+name}).click();
+ const reservation=await service.from('products').update({stock:2}).eq('sku',sku);
+ if(reservation.error)throw reservation.error;
+ await page.getByLabel('Precio RD$').fill('1900');
+ await page.getByRole('button',{name:'Guardar producto'}).click();
+ await page.getByRole('dialog').getByText(/El inventario cambió mientras editabas/).waitFor();
+ const current=await service.from('products').select('price,stock').eq('sku',sku).single();
+ if(current.error)throw current.error;
+ assert.equal(current.data.stock,2);assert.equal(current.data.price,1890);
+ await page.getByRole('button',{name:'Cerrar',exact:true}).click();
+ await page.getByRole('button',{name:'Actualizar dashboard'}).click();
+ await page.getByRole('button',{name:'Editar '+name}).waitFor();
+ console.log('PASS: una edición obsoleta no sobrescribe las unidades reservadas por otra operación.');
  await page.screenshot({path:'.local/verificacion-admin.png',fullPage:true});
 }finally{
  const {error}=await service.from('products').delete().eq('sku',sku);if(error)console.error('No se pudo limpiar el artículo temporal.');

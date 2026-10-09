@@ -1,4 +1,4 @@
-import { Component, useEffect, type ReactNode } from "react";
+import { Component, Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Routes, Route, useLocation, Link } from "react-router-dom";
 import { MessageCircle } from "lucide-react";
 import { Header, Footer, Toast, Empty } from "./components";
@@ -6,8 +6,9 @@ import { Home, Shop, ProductDetail } from "./Shop";
 import { Cart, Checkout } from "./Checkout";
 import { Account, OrderDetail } from "./Account";
 import { Contact, About, HowTo, Policies } from "./Info";
-import Admin from "./Admin";
+const Admin = lazy(() => import("./Admin"));
 import { whatsapp } from "./data";
+import { useStore } from "./store";
 class ErrorBoundary extends Component<
   { children: ReactNode },
   { failed: boolean }
@@ -43,6 +44,9 @@ function ScrollToTop() {
       "/admin": "Administración",
       "/contacto": "Contacto",
       "/nosotros": "Nosotros",
+      "/como-comprar": "Cómo comprar",
+      "/politicas": "Compras y entregas",
+      "/privacidad": "Privacidad",
     };
     document.title =
       (names[pathname] || "Tu tienda de confianza") + " · Dajura Comercial";
@@ -50,6 +54,7 @@ function ScrollToTop() {
   return null;
 }
 export default function App() {
+  const { catalogError, refresh, loading } = useStore();
   const admin = useLocation().pathname === "/admin";
   return (
     <ErrorBoundary>
@@ -58,6 +63,18 @@ export default function App() {
         Saltar al contenido
       </a>
       {!admin && <Header />}
+      {!admin && catalogError && (
+        <div className="container info-banner" role="alert">
+          {catalogError}{" "}
+          <button
+            className="text-button"
+            disabled={loading}
+            onClick={() => void refresh()}
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
       <div id="contenido">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -67,7 +84,16 @@ export default function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/cuenta" element={<Account />} />
           <Route path="/pedidos/:id" element={<OrderDetail />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route
+            path="/admin"
+            element={
+              <Suspense
+                fallback={<p className="loading">Cargando administración…</p>}
+              >
+                <Admin />
+              </Suspense>
+            }
+          />
           <Route path="/contacto" element={<Contact />} />
           <Route path="/nosotros" element={<About />} />
           <Route path="/como-comprar" element={<HowTo />} />

@@ -13,9 +13,10 @@ import { useStore } from "./store";
 import { Breadcrumb, Empty, Quantity } from "./components";
 import { money } from "./data";
 import { supabase, isDemo, errorMessage } from "./lib";
+import { cartTotal } from "./orderMath";
 export function Cart() {
   const { cart, setQuantity } = useStore();
-  const total = cart.reduce((s, x) => s + x.product.price * x.quantity, 0);
+  const total = cartTotal(cart);
   return (
     <main className="container page">
       <Breadcrumb items={["Tu carrito"]} />
@@ -108,13 +109,18 @@ export function Checkout() {
     notify,
     authLoading,
     refresh,
+    loading,
+    catalogError,
   } = useStore();
   const navigate = useNavigate();
   const requestId = useRef(crypto.randomUUID());
   const [method, setMethod] = useState<"pickup" | "delivery">("pickup"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const subtotal = cart.reduce((s, x) => s + x.product.price * x.quantity, 0);
+  const total = cartTotal(
+    cart,
+    method === "delivery" ? settings.shipping_fee : 0,
+  );
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!supabase || !user) return;
@@ -134,8 +140,7 @@ export function Checkout() {
         p_notes: f.get("notes"),
         p_delivery_method: method,
         p_request_id: requestId.current,
-        p_expected_total:
-          subtotal + (method === "delivery" ? settings.shipping_fee : 0),
+        p_expected_total: total,
       });
       if (error) throw error;
       clearCart();
@@ -152,6 +157,17 @@ export function Checkout() {
     }
   }
   if (authLoading) return <p className="loading">Cargando sesión…</p>;
+  if (loading)
+    return <p className="loading">Comprobando precios y disponibilidad…</p>;
+  if (catalogError)
+    return (
+      <Empty
+        title="No pudimos comprobar tu pedido"
+        description="Reintenta la conexión antes de continuar con la compra."
+        link="/carrito"
+        label="Volver al carrito"
+      />
+    );
   if (!cart.length)
     return (
       <Empty
@@ -181,7 +197,7 @@ export function Checkout() {
         />
       </main>
     );
-  if (!settings.bank_account || !settings.bank_name)
+  if (!settings.bank_account.trim() || !settings.bank_name.trim())
     return (
       <main className="container page">
         <Empty
@@ -319,11 +335,7 @@ export function Checkout() {
           </div>
           <div className="summary-total">
             <span>Total</span>
-            <strong>
-              {money(
-                subtotal + (method === "delivery" ? settings.shipping_fee : 0),
-              )}
-            </strong>
+            <strong>{money(total)}</strong>
           </div>
           <small>
             Precios finales publicados. No se añaden cargos ocultos.

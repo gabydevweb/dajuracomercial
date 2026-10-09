@@ -57,11 +57,11 @@ export function Header() {
             <Search size={19} />
             <input
               aria-label="Buscar productos"
-              placeholder="¿Qué necesitas para tu hogar?"
+              placeholder="Busca aquí"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <span>Buscar</span>
+            <button type="submit">Buscar</button>
           </form>
           <div className="header-actions">
             <Link to="/cuenta" className="account-link">
@@ -92,13 +92,18 @@ export function Header() {
             <button
               className="icon-button mobile-menu"
               aria-label="Abrir menú"
+              aria-expanded={open}
+              aria-controls="main-navigation"
               onClick={() => setOpen(!open)}
             >
               {open ? <X /> : <Menu />}
             </button>
           </div>
         </div>
-        <nav className={"nav-row " + (open ? "nav-open" : "")}>
+        <nav
+          id="main-navigation"
+          className={"nav-row " + (open ? "nav-open" : "")}
+        >
           <div className="container">
             <div className="nav-links" onClick={() => setOpen(false)}>
               <NavLink to="/" end>
@@ -108,7 +113,8 @@ export function Header() {
               <Link to="/tienda?categoria=Electrodomésticos">
                 Electrodomésticos
               </Link>
-              <Link to="/tienda?categoria=Hogar">Hogar & cocina</Link>
+              <Link to="/tienda?categoria=Hogar">Hogar</Link>
+              <Link to="/tienda?categoria=Cocina">Cocina</Link>
               <Link to="/nosotros">Nosotros</Link>
               <Link to="/contacto">Contacto</Link>
             </div>
@@ -184,8 +190,8 @@ export function Footer() {
               San Cristóbal, República Dominicana.
             </p>
             <a href="tel:+18299533756">829-953-3756</a>
-            <a href="mailto:DAnilocruzsierra@hotmail.com">
-              DAnilocruzsierra@hotmail.com
+            <a href="mailto:danilocruzsierra@hotmail.com">
+              danilocruzsierra@hotmail.com
             </a>
           </div>
         </div>

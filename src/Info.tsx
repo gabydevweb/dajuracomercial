@@ -47,8 +47,8 @@ export function Contact() {
             829-953-3756
           </a>
           <Mail />
-          <a href="mailto:DAnilocruzsierra@hotmail.com">
-            DAnilocruzsierra@hotmail.com
+          <a href="mailto:danilocruzsierra@hotmail.com">
+            danilocruzsierra@hotmail.com
           </a>
         </div>
         <div className="contact-card">
@@ -228,8 +228,8 @@ export function Policies() {
           <p>
             Para consultar, corregir o solicitar la eliminación de tus datos,
             escríbenos a{" "}
-            <a href="mailto:DAnilocruzsierra@hotmail.com">
-              DAnilocruzsierra@hotmail.com
+            <a href="mailto:danilocruzsierra@hotmail.com">
+              danilocruzsierra@hotmail.com
             </a>
             . La información necesaria para pedidos, obligaciones contables o
             reclamaciones puede conservarse cuando corresponda.

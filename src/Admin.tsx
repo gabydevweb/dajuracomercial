@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -29,6 +29,7 @@ import {
 } from "./data";
 import type { Product, Order, Profile, Settings, OrderStatus } from "./types";
 import { Empty } from "./components";
+import { fetchAll } from "./queries";
 type Tab = "overview" | "orders" | "products" | "customers" | "settings";
 const blankProduct: Product = {
   id: "",
@@ -60,6 +61,7 @@ export default function Admin() {
     [action, setAction] = useState<OrderStatus | null>(null),
     [uploading, setUploading] = useState(false);
   const modalOpen = Boolean(editing || selected);
+  const originalStock = useRef<number | null>(null);
   useEffect(() => {
     if (!modalOpen) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -103,26 +105,39 @@ export default function Admin() {
     if (!supabase) return;
     setBusy(true);
     setError("");
+    const client = supabase;
     try {
       const results = await Promise.all([
-        supabase
-          .from("orders")
-          .select("*")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("products")
-          .select("*")
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("profiles")
-          .select("*")
-          .order("created_at", { ascending: false }),
+        fetchAll<Order>((from, to) =>
+          client
+            .from("orders")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .order("id")
+            .range(from, to),
+        ),
+        fetchAll<Product>((from, to) =>
+          client
+            .from("products")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .order("id")
+            .range(from, to),
+        ),
+        fetchAll<Profile>((from, to) =>
+          client
+            .from("profiles")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .order("id")
+            .range(from, to),
+        ),
         supabase.from("store_settings").select("*").eq("id", 1).single(),
       ]);
-      for (const r of results) if (r.error) throw r.error;
-      setOrders(results[0].data as Order[]);
-      setProducts(results[1].data as Product[]);
-      setProfiles(results[2].data as Profile[]);
+      if (results[3].error) throw results[3].error;
+      setOrders(results[0]);
+      setProducts(results[1]);
+      setProfiles(results[2]);
       setSettings(results[3].data as Settings);
     } catch (e) {
       setError(errorMessage(e));
@@ -143,13 +158,22 @@ export default function Admin() {
     setError("");
     try {
       const { id, ...rest } = editing;
-      const { error } = await (id
-        ? supabase.from("products").update(rest).eq("id", id)
-        : supabase.from("products").insert(rest));
+      const { data, error } = await (id
+        ? supabase
+            .from("products")
+            .update(rest)
+            .eq("id", id)
+            .eq("stock", originalStock.current)
+            .select("id")
+        : supabase.from("products").insert(rest).select("id"));
       if (error) throw error;
-      setEditing(null);
+      if (!data?.length)
+        throw new Error(
+          "El inventario cambió mientras editabas. Cierra esta ventana, actualiza el catálogo y vuelve a editar para no sobrescribir las ventas recientes.",
+        );
       await load();
       await refresh();
+      setEditing(null);
       notify("Producto guardado.");
     } catch (e) {
       setError(errorMessage(e));
@@ -190,12 +214,29 @@ export default function Admin() {
       return;
     }
     setBusy(true);
+    setError("");
     try {
+      const cleanSettings = {
+        ...settings,
+        bank_name: settings.bank_name.trim(),
+        bank_holder: settings.bank_holder.trim(),
+        bank_account: settings.bank_account.trim(),
+      };
+      if (
+        !cleanSettings.bank_name ||
+        !cleanSettings.bank_holder ||
+        !cleanSettings.bank_account
+      ) {
+        throw new Error(
+          "Completa banco, titular y número de cuenta; no pueden contener solo espacios.",
+        );
+      }
       const { error } = await supabase
         .from("store_settings")
-        .update(settings)
+        .update(cleanSettings)
         .eq("id", 1);
       if (error) throw error;
+      setSettings(cleanSettings);
       await refresh();
       notify("Configuración actualizada.");
     } catch (e) {
@@ -216,9 +257,9 @@ export default function Admin() {
         p_note: String(f.get("note") || ""),
       });
       if (error) throw error;
+      await load();
       setSelected(null);
       setAction(null);
-      await load();
       notify("Pedido actualizado.");
     } catch (e) {
       setError(errorMessage(e));
@@ -228,13 +269,21 @@ export default function Admin() {
   }
   async function receipt(o: Order) {
     if (!supabase || !o.receipt_path) return;
+    // Open synchronously to avoid browsers blocking the receipt after the request.
+    const preview = window.open("about:blank", "_blank");
+    if (preview) preview.opener = null;
     try {
       const { data, error } = await supabase.storage
         .from("receipts")
         .createSignedUrl(o.receipt_path, 120);
       if (error) throw error;
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      if (preview) preview.location.replace(data.signedUrl);
+      else
+        throw new Error(
+          "Permite abrir ventanas para ver el comprobante y vuelve a intentarlo.",
+        );
     } catch (e) {
+      preview?.close();
       setError(errorMessage(e));
     }
   }
@@ -259,7 +308,7 @@ export default function Admin() {
     const escape = (v: unknown) =>
       '"' +
       String(v ?? "")
-        .replace(/^[=+@-]/, "'")
+        .replace(/^(?=[\s]*[=+@-])/, "'")
         .replaceAll('"', '""') +
       '"';
     const csv =
@@ -423,6 +472,27 @@ export default function Admin() {
           )}
           {tab === "overview" && (
             <>
+              {!isDemo &&
+                (!products.some((p) => p.active && p.stock > 0) ||
+                  !settings.bank_name.trim() ||
+                  !settings.bank_account.trim()) && (
+                  <div className="info-banner" role="status">
+                    <strong>Antes de recibir pedidos</strong>
+                    {!products.some((p) => p.active && p.stock > 0) && (
+                      <p>
+                        Agrega productos reales, actívalos y registra sus
+                        existencias.
+                      </p>
+                    )}
+                    {(!settings.bank_name.trim() ||
+                      !settings.bank_account.trim()) && (
+                      <p>
+                        Completa los datos bancarios en Configuración para
+                        habilitar las compras.
+                      </p>
+                    )}
+                  </div>
+                )}
               <div className="stats-grid">
                 {[
                   [money(revenue), "Ventas confirmadas", ShoppingBag],
@@ -477,7 +547,7 @@ export default function Admin() {
                 ) : (
                   <div className="admin-empty">
                     <ShoppingBag size={35} />
-                    <h3>Todo listo para el primer pedido</h3>
+                    <h3>Aún no hay pedidos</h3>
                     <p>Las compras de tus clientes aparecerán aquí.</p>
                   </div>
                 )}
@@ -565,7 +635,11 @@ export default function Admin() {
                 <h2>Catálogo ({products.length})</h2>
                 <button
                   className="button primary"
-                  onClick={() => setEditing({ ...blankProduct })}
+                  onClick={() => {
+                    originalStock.current = null;
+                    setError("");
+                    setEditing({ ...blankProduct });
+                  }}
                 >
                   <Plus size={17} /> Nuevo producto
                 </button>
@@ -610,7 +684,11 @@ export default function Admin() {
                           <button
                             className="icon-button"
                             aria-label={"Editar " + p.name}
-                            onClick={() => setEditing({ ...p })}
+                            onClick={() => {
+                              originalStock.current = p.stock;
+                              setError("");
+                              setEditing({ ...p });
+                            }}
                           >
                             <Pencil size={17} />
                           </button>

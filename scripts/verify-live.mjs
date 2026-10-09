@@ -14,8 +14,8 @@ const options={auth:{persistSession:false,autoRefreshToken:false}};
 const service=createClient(url,keys.find(k=>k.name==='service_role').api_key,options);
 const publicKey=keys.find(k=>k.name==='anon').api_key;
 const admin=createClient(url,publicKey,options),customer=createClient(url,publicKey,options),other=createClient(url,publicKey,options),anonymous=createClient(url,publicKey,options);
-const access=await readFile('.local/ACCESO-ADMIN.txt','utf8');
-const email=access.match(/^Correo: (.+)$/m)?.[1],password=access.match(/^Contraseña inicial: (.+)$/m)?.[1];
+const access=process.env.DAJURA_ADMIN_PASSWORD ? '' : await readFile('.local/ACCESO-ADMIN.txt','utf8');
+const email=process.env.DAJURA_ADMIN_EMAIL || access.match(/^Correo: (.+)$/m)?.[1],password=process.env.DAJURA_ADMIN_PASSWORD || access.match(/^Contraseña inicial: (.+)$/m)?.[1];
 const check=(result)=>{if(result.error)throw new Error(result.error.message);return result.data;};
 const tag=randomUUID(),userIds=[],storageFiles=[];let productId,orderId;
 try {

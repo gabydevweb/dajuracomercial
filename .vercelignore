@@ -1,0 +1,7 @@
+.local
+screenshots
+test-results
+playwright-report
+tests
+.env*
+.git
